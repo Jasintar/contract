@@ -331,6 +331,10 @@ contract Crowdsale {
 
   // start and end timestamps where investments are allowed (both inclusive)
   uint256 public startTime;
+  uint256 public startTimeStage2;
+  uint256 public startTimeStage3;
+  uint256 public startTimeStage4;
+  uint256 public startTimeStage5;
   uint256 public endTime;
 
   // address where funds are collected
@@ -358,20 +362,44 @@ contract Crowdsale {
   event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
 
-  function Crowdsale(uint256 _startTime, uint256 _endTime, uint256 _rate, uint256 _rewardRate, address _wallet, address _contractAddress) public {
+  function Crowdsale(uint256 _startTime, uint256 _startTimeStage2, uint256 _startTimeStage3,
+    uint256 _startTimeStage4, uint256 _startTimeStage5, uint256 _endTime, uint256 _rate,
+    uint256 _rewardRate, address _wallet, address _contractAddress) public {
     require(_startTime >= now);
-    require(_endTime >= _startTime);
+    require(_startTimeStage2 >= _startTime);
+    require(_startTimeStage3 >= _startTimeStage2);
+    require(_startTimeStage4 >= _startTimeStage3);
+    require(_startTimeStage5 >= _startTimeStage4);
+    require(_endTime >= _startTimeStage5);
     require(_rate > 0);
     require(_rewardRate > 0);
     require(_wallet != address(0));
 
     token = createTokenContract();
     startTime = _startTime;
+    startTimeStage2 = _startTimeStage2;
+    startTimeStage3 = _startTimeStage3;
+    startTimeStage4 = _startTimeStage4;
+    startTimeStage5 = _startTimeStage5;
     endTime = _endTime;
     rate = _rate;
     rewardRate = _rewardRate;
     wallet = _wallet;
     contractAddress = _contractAddress;
+  }
+
+  function calculateTokenCount(uint256 count, uint256 rateBonus) private view returns (uint256) {
+    uint256 result = count.mul(rateBonus);
+    if (now >= startTime && now <= startTimeStage2) {
+      result = result.mul(13).div(10); // 30%
+    } else if (now >= startTimeStage2 && now <= startTimeStage3) {
+      result = result.mul(115).div(100); // 15%
+    } else if (now >= startTimeStage3 && now <= startTimeStage4) {
+      result = result.mul(11).div(10); // 10%
+    } else if (now >= startTimeStage4 && now <= startTimeStage5) {
+      result = result.mul(105).div(100); // 5%
+    }
+    return result;
   }
 
   // creates the token to be sold.
@@ -399,9 +427,9 @@ contract Crowdsale {
     uint256 weiAmount = msg.value;
 
     // calculate token amount to be created
-    uint256 tokens = weiAmount.mul(rate);
+    uint256 tokens = calculateTokenCount(weiAmount, rate);
     // tokens for team, advicers etc.
-    uint256 tokensReward = weiAmount.mul(rewardRate);
+    uint256 tokensReward = calculateTokenCount(weiAmount, rewardRate);
     // update state
     weiRaised = weiRaised.add(weiAmount);
 
@@ -513,8 +541,12 @@ contract GinexToken is MintableToken {
 
 contract GinexICO is Crowdsale, Ownable{
   uint256 _startTime = now;
-  uint256 _endTime = now + 1 minutes;
-  uint256 _rate = 3000;
+  uint256 _startTimeStage2 = now + 2 minutes;
+  uint256 _startTimeStage3 = now + 3 minutes;
+  uint256 _startTimeStage4 = now + 4 minutes;
+  uint256 _startTimeStage5 = now + 5 minutes;
+  uint256 _endTime = now + 6 minutes;
+  uint256 _rate = 4000;
   uint256 _rewardRate = 1000;
   address _wallet = 0x9CBf6af0Eb27386Be92a45f357c1673826534328;
 
@@ -526,7 +558,8 @@ contract GinexICO is Crowdsale, Ownable{
 
 
   function GinexICO() public
-  Crowdsale(_startTime, _endTime, _rate, _rewardRate, _wallet, this)
+  Crowdsale(_startTime, _startTimeStage2, _startTimeStage3, _startTimeStage4,
+    _startTimeStage5, _endTime, _rate, _rewardRate, _wallet, this)
   {
   }
 
